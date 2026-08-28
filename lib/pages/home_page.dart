@@ -13,7 +13,6 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _index = 0;
 
-  // 底部导航各入口的卡片列表
   final List<_ToolEntry> _entries = const [
     _ToolEntry(
       title: '信息查询',
@@ -45,7 +44,11 @@ class _HomePageState extends State<HomePage> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF121212) : Colors.grey.shade50;
+
     return Scaffold(
+      backgroundColor: bgColor,
       body: IndexedStack(
         index: _index,
         children: _entries.asMap().entries.map((entry) {
@@ -86,7 +89,6 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-/// 底部导航一个入口的 Scaffold
 class _ToolScaffold extends StatelessWidget {
   final String title;
   final Color color;
@@ -106,7 +108,11 @@ class _ToolScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF121212) : Colors.grey.shade50;
+
     return Scaffold(
+      backgroundColor: bgColor,
       appBar: AppBar(
         title: Text(title),
         centerTitle: true,
@@ -121,43 +127,39 @@ class _ToolScaffold extends StatelessWidget {
         ],
       ),
       body: ListView(
-        padding: const EdgeInsets.all(20),
-        children: [
-          ...cards.map((card) => _buildCard(context, card)).toList(),
-        ],
+        padding: const EdgeInsets.all(16),
+        children: cards
+            .map((card) => _buildCard(context, card))
+            .toList(),
       ),
     );
   }
 
   Widget _buildCard(BuildContext context, _ToolCard card) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 16),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Card(
-        elevation: 2,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-        ),
         child: InkWell(
           borderRadius: BorderRadius.circular(16),
           onTap: () => onCardTap(card, card.route),
           child: Padding(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             child: Row(
               children: [
                 Container(
-                  width: 56,
-                  height: 56,
+                  width: 52,
+                  height: 52,
                   decoration: BoxDecoration(
                     color: card.color.withOpacity(0.12),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: Icon(
                     card.icon,
-                    size: 30,
+                    size: 28,
                     color: card.color,
                   ),
                 ),
-                const SizedBox(width: 16),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -165,7 +167,7 @@ class _ToolScaffold extends StatelessWidget {
                       Text(
                         card.title,
                         style: const TextStyle(
-                          fontSize: 17,
+                          fontSize: 16,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -194,7 +196,6 @@ class _ToolScaffold extends StatelessWidget {
   }
 }
 
-/// 底部导航一个入口里的功能卡片
 class _ToolCard {
   final String title;
   final String subtitle;
@@ -211,7 +212,6 @@ class _ToolCard {
   });
 }
 
-/// 底部导航一个入口
 class _ToolEntry {
   final String title;
   final IconData icon;
