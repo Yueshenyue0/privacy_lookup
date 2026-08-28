@@ -13,51 +13,96 @@ class HomePage extends StatefulWidget {
 class _HomePageState extends State<HomePage> {
   int _index = 0;
 
+  // 底部导航各入口的卡片列表
+  final List<_ToolEntry> _entries = const [
+    _ToolEntry(
+      title: '信息查询',
+      icon: Icons.search,
+      color: Color(0xFF6C63FF),
+      cards: [
+        _ToolCard(
+          title: '信息查询',
+          subtitle: 'QQ / 手机号 / 证件号 / 邮箱 / 微博UID',
+          icon: Icons.privacy_tip,
+          route: LookupPage(),
+        ),
+      ],
+    ),
+    _ToolEntry(
+      title: '核验',
+      icon: Icons.verified_user,
+      color: Color(0xFF0288D1),
+      cards: [
+        _ToolCard(
+          title: '二要素核验',
+          subtitle: '姓名 + 身份证号验证',
+          icon: Icons.fingerprint,
+          route: VerifyPage(),
+        ),
+      ],
+    ),
+  ];
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       body: IndexedStack(
         index: _index,
-        children: const [
-          _ToolScaffold(
-            title: '信息查询',
-            child: _ToolTabScaffold(tabs: [
-              Tab(text: '信息查询'),
-            ], pages: [LookupPage()]),
-          ),
-          _ToolScaffold(
-            title: '核验',
-            child: _ToolTabScaffold(tabs: [
-              Tab(text: '二要素核验'),
-            ], pages: [VerifyPage()]),
-          ),
-        ],
+        children: _entries.asMap().entries.map((entry) {
+          final i = entry.key;
+          final e = entry.value;
+          return _ToolScaffold(
+            title: e.title,
+            color: e.color,
+            icon: e.icon,
+            cards: e.cards,
+            onAbout: () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AboutPage()),
+              );
+            },
+            onCardTap: (card, page) {
+              if (i == _index) {
+                Navigator.of(context).push(
+                  MaterialPageRoute(builder: (_) => page),
+                );
+              }
+            },
+          );
+        }).toList(),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: _index,
         onDestinationSelected: (i) => setState(() => _index = i),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.search),
-            label: '信息查询',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.verified_user_outlined),
-            selectedIcon: Icon(Icons.verified_user),
-            label: '核验',
-          ),
-        ],
+        destinations: _entries
+            .map((e) => NavigationDestination(
+                  icon: Icon(e.icon),
+                  selectedIcon: Icon(e.icon),
+                  label: e.title,
+                ))
+            .toList(),
       ),
     );
   }
 }
 
-/// 每个工具入口的壳：AppBar（含右上角"关于"）+ 内容
+/// 底部导航一个入口的 Scaffold
 class _ToolScaffold extends StatelessWidget {
   final String title;
-  final Widget child;
+  final Color color;
+  final IconData icon;
+  final List<_ToolCard> cards;
+  final VoidCallback onAbout;
+  final Function(_ToolCard, Widget) onCardTap;
 
-  const _ToolScaffold({required this.title, required this.child});
+  const _ToolScaffold({
+    required this.title,
+    required this.color,
+    required this.icon,
+    required this.cards,
+    required this.onAbout,
+    required this.onCardTap,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -65,51 +110,118 @@ class _ToolScaffold extends StatelessWidget {
       appBar: AppBar(
         title: Text(title),
         centerTitle: true,
+        backgroundColor: color,
+        foregroundColor: Colors.white,
         actions: [
           IconButton(
             icon: const Icon(Icons.info_outline),
             tooltip: '关于',
-            onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AboutPage()),
-              );
-            },
+            onPressed: onAbout,
           ),
         ],
       ),
-      body: child,
+      body: ListView(
+        padding: const EdgeInsets.all(20),
+        children: [
+          ...cards.map((card) => _buildCard(context, card)).toList(),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCard(BuildContext context, _ToolCard card) {
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 16),
+      child: Card(
+        elevation: 2,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: InkWell(
+          borderRadius: BorderRadius.circular(16),
+          onTap: () => onCardTap(card, card.route),
+          child: Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              children: [
+                Container(
+                  width: 56,
+                  height: 56,
+                  decoration: BoxDecoration(
+                    color: card.color.withOpacity(0.12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    card.icon,
+                    size: 30,
+                    color: card.color,
+                  ),
+                ),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        card.title,
+                        style: const TextStyle(
+                          fontSize: 17,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        card.subtitle,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  Icons.chevron_right,
+                  color: Colors.grey.shade400,
+                  size: 24,
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
 
-/// 每个入口内的功能 Tab 容器
-class _ToolTabScaffold extends StatelessWidget {
-  final List<Tab> tabs;
-  final List<Widget> pages;
+/// 底部导航一个入口里的功能卡片
+class _ToolCard {
+  final String title;
+  final String subtitle;
+  final IconData icon;
+  final Color color;
+  final Widget route;
 
-  const _ToolTabScaffold({required this.tabs, required this.pages});
+  const _ToolCard({
+    required this.title,
+    required this.subtitle,
+    required this.icon,
+    this.color = const Color(0xFF6C63FF),
+    required this.route,
+  });
+}
 
-  @override
-  Widget build(BuildContext context) {
-    return DefaultTabController(
-      length: tabs.length,
-      child: Column(
-        children: [
-          Material(
-            color: Theme.of(context).colorScheme.surface,
-            child: TabBar(
-              tabs: tabs,
-              labelColor: Theme.of(context).colorScheme.primary,
-              unselectedLabelColor: Colors.grey,
-            ),
-          ),
-          Expanded(
-            child: TabBarView(
-              children: pages,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+/// 底部导航一个入口
+class _ToolEntry {
+  final String title;
+  final IconData icon;
+  final Color color;
+  final List<_ToolCard> cards;
+
+  const _ToolEntry({
+    required this.title,
+    required this.icon,
+    required this.color,
+    required this.cards,
+  });
 }
