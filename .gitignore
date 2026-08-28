@@ -1,0 +1,17 @@
+# Flutter/Dart/Pub
+.dart_tool/
+.packages
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# IDE
+.idea/
+.vscode/
+*.iml
+*.ipr
+*.iws
+
+# Misc
+.DS_Store
+*.log
