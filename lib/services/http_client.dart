@@ -9,7 +9,7 @@ import 'package:http/io_client.dart';
 http.Client getDirectClient() {
   final inner = HttpClient()
     // 最关键的一行！强制直连，忽略系统代理
-    ..findProxy = (uri) => 'DIRECT'
-    ..userAgent = 'PrivacyLookup/1.0';
-  return http.IOClient(inner);
+    ..findProxy = (uri) => 'DIRECT';
+  inner.userAgent = 'PrivacyLookup/1.0';
+  return IOClient(inner);
 }
