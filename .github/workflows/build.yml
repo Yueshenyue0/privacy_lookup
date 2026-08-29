@@ -56,14 +56,17 @@ jobs:
 
       - name: Bump compileSdk/targetSdk for device_safety_info
         run: |
-          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 37/' android/app/build.gradle.kts
-          sed -i 's/targetSdk = flutter.targetSdkVersion/targetSdk = 37/' android/app/build.gradle.kts
-          sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 37/' android/app/build.gradle
-          sed -i 's/targetSdkVersion flutter.targetSdkVersion/targetSdkVersion 37/' android/app/build.gradle
+          sed -i 's/compileSdk = flutter.compileSdkVersion/compileSdk = 37/' android/app/build.gradle.kts || true
+          sed -i 's/targetSdk = flutter.targetSdkVersion/targetSdk = 37/' android/app/build.gradle.kts || true
+          # 兼容旧版 .gradle 格式（若存在才改）
+          if [ -f android/app/build.gradle ]; then
+            sed -i 's/compileSdkVersion flutter.compileSdkVersion/compileSdkVersion 37/' android/app/build.gradle
+            sed -i 's/targetSdkVersion flutter.targetSdkVersion/targetSdkVersion 37/' android/app/build.gradle
+          fi
           echo '=== build.gradle.kts ==='
           grep -n 'compileSdk\|targetSdk' android/app/build.gradle.kts || true
           echo '=== build.gradle ==='
-          grep -n 'compileSdk\|targetSdk' android/app/build.gradle || true
+          if [ -f android/app/build.gradle ]; then grep -n 'compileSdk\|targetSdk' android/app/build.gradle || true; fi
 
       - name: Get dependencies
         run: flutter pub get
