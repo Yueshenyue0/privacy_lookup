@@ -1,9 +1,12 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:advanced_root_detection/advanced_root_detection.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'pages/home_page.dart';
+import 'pages/auth_page.dart';
+import 'services/thomeauth/thome_auth_client.dart';
 
 void main() {
   runApp(const _AppWithGate());
@@ -44,10 +47,12 @@ class SecurityWrapper extends StatefulWidget {
 class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingObserver {
   final _shield = AdvanceRootDetection();
   final _connectivity = Connectivity();
+  final _authClient = ThomeAuthClient();
   StreamSubscription<Threat>? _threatSub;
   StreamSubscription<List<ConnectivityResult>>? _connSub;
   bool _initialCheckDone = false;
   bool _blocked = false;
+  bool _authPassed = false;
   String _blockReason = '';
 
   @override
@@ -109,6 +114,36 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
 
     // 4) 后台定期检测（原生端最小间隔 5 秒，作为兜底）
     await _shield.startMonitoring(config);
+
+    // 5) 网络验证：检查本地是否已有有效卡密
+    await _verifyAuth();
+  }
+
+  /// 网络验证：本地有卡密则验证，无则进激活页
+  Future<void> _verifyAuth() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final kamiHash = prefs.getString('kami_hash');
+      if (kamiHash == null || kamiHash.isEmpty) {
+        // 无卡密 → 保持 _authPassed=false，build 显示 AuthPage
+        return;
+      }
+      // 有卡密 → 验证是否有效
+      final result = await _authClient.use(kamiHash);
+      if (result.valid) {
+        setState(() => _authPassed = true);
+      }
+      // 卡密失效 → 保持 _authPassed=false，build 显示 AuthPage
+    } catch (e) {
+      // 网络错误时，允许进入（下次启动再验证）
+      setState(() => _authPassed = true);
+    }
+  }
+
+  void _onAuthPassed() {
+    if (mounted) {
+      setState(() => _authPassed = true);
+    }
   }
 
   Future<void> _checkConnectivityOnce() async {
@@ -213,6 +248,10 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
       return const Scaffold(
         body: Center(child: CircularProgressIndicator()),
       );
+    }
+    // 网络验证未通过 → 显示验证页
+    if (!_authPassed) {
+      return AuthPage(client: _authClient, onPassed: _onAuthPassed);
     }
     return const HomePage();
   }
