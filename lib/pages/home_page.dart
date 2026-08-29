@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'about_page.dart';
 import 'lookup_page.dart';
 import 'verify_page.dart';
+import 'dzzz_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -23,6 +24,11 @@ class _HomePageState extends State<HomePage> {
           title: '信息查询',
           subtitle: 'QQ / 手机号 / 证件号 / 邮箱 / 微博UID',
           route: LookupPage(),
+        ),
+        _ToolCard(
+          title: '电子营业执照',
+          subtitle: '输入统一社会信用代码查询',
+          route: DzzzPage(),
         ),
       ],
     ),
