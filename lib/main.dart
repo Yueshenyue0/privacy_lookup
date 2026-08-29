@@ -60,6 +60,8 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
   bool _initialCheckDone = false;
   bool _blocked = false;
   bool _authPassed = false;
+  bool _configAllowed = false; // config.txt = true 时功能可用
+  bool _configLoaded = false; // config 是否已成功返回
   String _blockReason = '';
 
   @override
@@ -70,6 +72,23 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
   }
 
   Future<void> _initSecurity() async {
+    // 0) 先拉取 config.txt（功能开关），无限重试直到成功。
+    //    在此之前，功能不可用。
+    final configText = await ArkService.fetchConfig();
+    final allowed = configText == 'true';
+    setState(() {
+      _configAllowed = allowed;
+      _configLoaded = true;
+      _initialCheckDone = true;
+    });
+    debugPrint('[ARK] config.txt 功能开关 = $allowed ($configText)');
+
+    if (!allowed) {
+      // 功能禁用：直接结束，build 显示禁用页
+      return;
+    }
+
+    // 功能可用 → 继续安全检测
     // 开启 VPN 检测（抓包工具多为 VPN 实现）+ 最短监控间隔
     const config = SecurityConfig(
       android: AndroidConfig(checkVpn: true),
@@ -96,8 +115,6 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
         return;
       }
     } catch (_) {}
-
-    setState(() => _initialCheckDone = true);
 
     // 2) 系统级实时 VPN 监听：VPN 一开启立刻回调（秒级），不等轮询
     _connSub = _connectivity.onConnectivityChanged.listen((results) {
@@ -139,8 +156,7 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
       final result = await _authClient.use(kamiHash);
       if (result.valid) {
         setState(() => _authPassed = true);
-        // 等 UI 完成 build 后再拉公告并弹窗
-        await Future.delayed(const Duration(milliseconds: 600));
+        // 验证通过后尽快拉公告（去掉延时）
         await _loadAnnouncements();
       }
       // 卡密失效 → 保持 _authPassed=false，build 显示 AuthPage
@@ -153,20 +169,12 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
   /// 拉取 ARK 公告并弹窗（验证通过后调用）
   Future<void> _loadAnnouncements() async {
     try {
-      // 1) 检查功能开关：config.txt 为 true 才允许
-      final enabled = await ArkService.isFeatureEnabled();
-      debugPrint('[ARK] config.txt 功能开关 = $enabled');
-      if (!enabled) return;
-
-      // 2) 拉取公告 gg.txt
-      final announcement = await ArkService.fetchAnnouncement();
-      if (announcement == null) {
-        debugPrint('[ARK] gg.txt 无公告内容，不弹窗');
-        return;
-      }
-      debugPrint('[ARK] 公告标题=${announcement.title}, 图片=${announcement.imageUrl}');
-
-      // 3) 用全局 navigatorKey 弹窗
+      // 拉取 gg.txt 公告内容
+      final raw = await ArkService.fetchAnnouncementRaw();
+      final announcement = ArkService.parseAnnouncement(raw);
+      if (announcement == null) return;
+      debugPrint('[ARK] 公告内容=${announcement.content}, 图片=${announcement.imageUrl}');
+      // 用全局 navigatorKey 弹窗，标题写死"公告"
       await ArkAnnouncementDialog.show(announcement);
       debugPrint('[ARK] 公告弹窗已触发');
     } catch (e, st) {
@@ -251,6 +259,21 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
 
   @override
   Widget build(BuildContext context) {
+    if (!_configLoaded) {
+      // config.txt 尚未返回：阻塞，显示加载页，功能不可用
+      return const Scaffold(
+        body: Center(
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              CircularProgressIndicator(),
+              SizedBox(height: 16),
+              Text('正在检查服务...'),
+            ],
+          ),
+        ),
+      );
+    }
     if (_blocked) {
       // 阻断页（如果 dialog 还没弹出或已被关闭，兜底）
       return Scaffold(
@@ -272,6 +295,29 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
                 const SizedBox(height: 24),
                 FilledButton(
                     onPressed: () => exit(0), child: const Text('退出应用')),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    // config.txt = false → 功能禁用页
+    if (!_configAllowed) {
+      return const Scaffold(
+        body: Center(
+          child: Padding(
+            padding: EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.block_rounded, size: 64, color: Colors.grey),
+                SizedBox(height: 16),
+                Text('功能已禁用',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
+                SizedBox(height: 8),
+                Text('该功能暂不可用，请联系管理员',
+                    style: TextStyle(color: Colors.grey),
+                    textAlign: TextAlign.center),
               ],
             ),
           ),

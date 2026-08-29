@@ -108,12 +108,9 @@ class _AuthPageState extends State<AuthPage> {
   /// 拉取 ARK 公告并弹窗
   Future<void> _loadAnnouncements() async {
     try {
-      // 功能开关：config.txt 为 true 才允许
-      final enabled = await ArkService.isFeatureEnabled();
-      if (!enabled) return;
       // 拉取 gg.txt 公告
-      final announcement = await ArkService.fetchAnnouncement();
-      if (announcement == null) return;
+      final raw = await ArkService.fetchAnnouncementRaw();
+      final announcement = ArkService.parseAnnouncement(raw);
       await ArkAnnouncementDialog.show(announcement);
     } catch (_) {
       // 公告加载失败不影响使用
