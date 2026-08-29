@@ -39,7 +39,6 @@ class StartupGate extends StatefulWidget {
 }
 
 class _StartupGateState extends State<StartupGate> with WidgetsBindingObserver {
-  final _info = DeviceSafetyInfo();
   bool _checking = true;
   bool _blocked = false;
   String _message = '';
@@ -68,16 +67,17 @@ class _StartupGateState extends State<StartupGate> with WidgetsBindingObserver {
   Future<void> _check() async {
     try {
       // 抓包工具特征：hook 框架(Frida/Xposed) + 调试器 + VPN
-      final hooked = await _info.isHooked();
-      final debugger = await _info.isDebuggerAttached();
-      final vpn = await _info.isVPNCheck();
+      final hooked = await DeviceSafetyInfo.isHooked();
+      final frida = DeviceSafetyInfo.checkFridaByMaps(); // 原生 C 层扫 /proc/self/maps，更抗绕过
+      final debugger = await DeviceSafetyInfo.isDebuggerAttached();
+      final vpn = await DeviceSafetyInfo.isVPNCheck();
 
-      if (hooked || debugger || vpn) {
+      if (hooked || frida || debugger || vpn) {
         setState(() {
           _checking = false;
           _blocked = true;
           _message = [
-            if (hooked) '检测到 Hook 框架 (Frida/Xposed)',
+            if (hooked || frida) '检测到 Hook 框架 (Frida/Xposed)',
             if (debugger) '检测到调试器',
             if (vpn) '检测到 VPN 连接',
           ].join('\n');
