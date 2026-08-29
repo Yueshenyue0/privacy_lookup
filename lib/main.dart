@@ -148,11 +148,14 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
     try {
       final prefs = await SharedPreferences.getInstance();
       final kamiHash = prefs.getString('kami_hash');
+      debugPrint('[ThomeAuth] 拉取公告, kamiHash=$kamiHash');
       final announcements = await _authClient.getAnnouncements(kamiHash: kamiHash);
+      debugPrint('[ThomeAuth] 公告数量: ${announcements.length}');
       if (!mounted || announcements.isEmpty) return;
       await AnnouncementDialog.show(context, announcements);
-    } catch (_) {
-      // 公告加载失败不影响使用
+    } catch (e, st) {
+      // 记录异常，便于排查公告为何不弹
+      debugPrint('[ThomeAuth] 公告拉取异常: $e\n$st');
     }
   }
 
