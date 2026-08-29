@@ -14,7 +14,6 @@ class _LookupPageState extends State<LookupPage> {
   PrivacyResult? _result;
   String? _error;
 
-  // 支持的类型，仅作 tag 展示（自动检测，无需选择）
   final List<String> _types = const [
     'QQ号',
     '手机号',
@@ -61,25 +60,28 @@ class _LookupPageState extends State<LookupPage> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildInputCard(),
-          const SizedBox(height: 16),
-          _buildResultArea(),
-        ],
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('信息查询'),
+        centerTitle: true,
+      ),
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildInputCard(),
+            const SizedBox(height: 12),
+            _buildResultArea(),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildInputCard() {
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -158,10 +160,6 @@ class _LookupPageState extends State<LookupPage> {
     }
 
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -178,7 +176,8 @@ class _LookupPageState extends State<LookupPage> {
               _buildResultRow('手机号', r.phoneNumbers),
             if (r.idNumbers.isNotEmpty) _buildResultRow('证件号', r.idNumbers),
             if (r.qqNumbers.isNotEmpty) _buildResultRow('QQ号', r.qqNumbers),
-            if (r.wbNumbers.isNotEmpty) _buildResultRow('微博UID', r.wbNumbers),
+            if (r.wbNumbers.isNotEmpty)
+              _buildResultRow('微博UID', r.wbNumbers),
             if (r.passwords.isNotEmpty) _buildResultRow('密码', r.passwords),
             if (r.emails.isNotEmpty) _buildResultRow('邮箱', r.emails),
             if (r.addresses.isNotEmpty) _buildResultRow('地址', r.addresses),
@@ -204,7 +203,8 @@ class _LookupPageState extends State<LookupPage> {
           Expanded(
             child: SelectableText(
               value,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              style: const TextStyle(
+                  fontSize: 15, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -214,22 +214,21 @@ class _LookupPageState extends State<LookupPage> {
 
   Widget _buildMessage(String text, {bool isError = false}) {
     return Card(
-      color: isError ? Colors.red.shade50 : Colors.grey.shade50,
+      color: isError
+          ? Theme.of(context).colorScheme.errorContainer
+          : null,
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: Center(
-          child: Text(
-            text,
-            style: TextStyle(
-              color: isError ? Colors.red.shade700 : Colors.grey.shade700,
-              fontSize: 14,
-            ),
-            textAlign: TextAlign.center,
+        child: Text(
+          text,
+          style: TextStyle(
+            color: isError
+                ? Theme.of(context).colorScheme.error
+                : Colors.grey.shade700,
+            fontSize: 14,
           ),
+          textAlign: TextAlign.center,
         ),
       ),
     );

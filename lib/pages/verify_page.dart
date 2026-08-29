@@ -55,40 +55,35 @@ class _VerifyPageState extends State<VerifyPage> {
 
   @override
   Widget build(BuildContext context) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(20),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          _buildInfoCard(),
-          const SizedBox(height: 16),
-          _buildFormCard(),
-          const SizedBox(height: 16),
-          _buildResultArea(),
-        ],
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('二要素核验'),
+        centerTitle: true,
+      ),
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            _buildInfoCard(),
+            const SizedBox(height: 12),
+            _buildFormCard(),
+            const SizedBox(height: 12),
+            _buildResultArea(),
+          ],
+        ),
       ),
     );
   }
 
   Widget _buildInfoCard() {
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            const Icon(Icons.info_outline, color: Color(0xFF6C63FF)),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                '通过姓名 + 身份证号核验实名信息是否一致',
-                style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
-              ),
-            ),
-          ],
+        child: Text(
+          '通过姓名 + 身份证号核验实名信息是否一致',
+          style: TextStyle(color: Colors.grey.shade700, fontSize: 14),
         ),
       ),
     );
@@ -96,10 +91,6 @@ class _VerifyPageState extends State<VerifyPage> {
 
   Widget _buildFormCard() {
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -178,11 +169,9 @@ class _VerifyPageState extends State<VerifyPage> {
     final r = _result!;
     final success = r.isSuccess;
     return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(16),
-      ),
-      color: success ? Colors.green.shade50 : Colors.orange.shade50,
+      color: success
+          ? Theme.of(context).colorScheme.primaryContainer
+          : Theme.of(context).colorScheme.errorContainer,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -192,7 +181,9 @@ class _VerifyPageState extends State<VerifyPage> {
               children: [
                 Icon(
                   success ? Icons.check_circle : Icons.cancel,
-                  color: success ? Colors.green : Colors.orange,
+                  color: success
+                      ? Theme.of(context).colorScheme.primary
+                      : Theme.of(context).colorScheme.error,
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -200,8 +191,9 @@ class _VerifyPageState extends State<VerifyPage> {
                   style: TextStyle(
                     fontWeight: FontWeight.w700,
                     fontSize: 17,
-                    color:
-                        success ? Colors.green.shade700 : Colors.orange.shade700,
+                    color: success
+                        ? Theme.of(context).colorScheme.primary
+                        : Theme.of(context).colorScheme.error,
                   ),
                 ),
               ],
@@ -232,7 +224,8 @@ class _VerifyPageState extends State<VerifyPage> {
           Expanded(
             child: SelectableText(
               value,
-              style: const TextStyle(fontSize: 15, fontWeight: FontWeight.w500),
+              style: const TextStyle(
+                  fontSize: 15, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -242,22 +235,21 @@ class _VerifyPageState extends State<VerifyPage> {
 
   Widget _buildMessage(String text, {bool isError = false}) {
     return Card(
-      color: isError ? Colors.red.shade50 : Colors.grey.shade50,
+      color: isError
+          ? Theme.of(context).colorScheme.errorContainer
+          : null,
       elevation: 0,
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(12),
-      ),
       child: Padding(
         padding: const EdgeInsets.all(20),
-        child: Center(
-          child: Text(
-            text,
-            style: TextStyle(
-              color: isError ? Colors.red.shade700 : Colors.grey.shade700,
-              fontSize: 14,
-            ),
-            textAlign: TextAlign.center,
+        child: Text(
+          text,
+          style: TextStyle(
+            color: isError
+                ? Theme.of(context).colorScheme.error
+                : Colors.grey.shade700,
+            fontSize: 14,
           ),
+          textAlign: TextAlign.center,
         ),
       ),
     );

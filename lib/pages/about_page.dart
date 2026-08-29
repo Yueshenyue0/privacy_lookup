@@ -16,50 +16,37 @@ class AboutPage extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                width: 96,
-                height: 96,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF6C63FF),
-                  borderRadius: BorderRadius.circular(24),
-                ),
-                child: const Icon(
-                  Icons.security,
-                  size: 56,
-                  color: Colors.white,
-                ),
-              ),
-              const SizedBox(height: 20),
               const Text(
                 '信息工具',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.w700,
-                ),
+                style: TextStyle(fontSize: 24, fontWeight: FontWeight.w700),
               ),
-              const SizedBox(height: 8),
-              const Text(
+              const SizedBox(height: 12),
+              Text(
                 '作者：Eri',
                 style: TextStyle(
                   fontSize: 16,
-                  color: Colors.black87,
+                  color: Colors.grey.shade700,
                 ),
               ),
-              const SizedBox(height: 4),
+              const SizedBox(height: 8),
               Text(
                 '版本 1.0.0',
-                style: TextStyle(color: Colors.grey.shade600, fontSize: 13),
+                style: TextStyle(color: Colors.grey.shade500, fontSize: 13),
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 32),
               Container(
-                padding: const EdgeInsets.all(12),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF6C63FF).withOpacity(0.08),
-                  borderRadius: BorderRadius.circular(12),
+                  color: const Color(0xFF6C63FF).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(20),
                 ),
                 child: const Text(
                   '信息查询 · 二要素核验',
-                  style: TextStyle(color: Color(0xFF6C63FF), fontSize: 14),
+                  style: TextStyle(
+                      color: Color(0xFF6C63FF),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500),
                 ),
               ),
             ],

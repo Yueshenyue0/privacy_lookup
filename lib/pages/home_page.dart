@@ -22,7 +22,6 @@ class _HomePageState extends State<HomePage> {
         _ToolCard(
           title: '信息查询',
           subtitle: 'QQ / 手机号 / 证件号 / 邮箱 / 微博UID',
-          icon: Icons.privacy_tip,
           route: LookupPage(),
         ),
       ],
@@ -35,7 +34,6 @@ class _HomePageState extends State<HomePage> {
         _ToolCard(
           title: '二要素核验',
           subtitle: '姓名 + 身份证号验证',
-          icon: Icons.fingerprint,
           route: VerifyPage(),
         ),
       ],
@@ -146,20 +144,6 @@ class _ToolScaffold extends StatelessWidget {
             padding: const EdgeInsets.all(16),
             child: Row(
               children: [
-                Container(
-                  width: 52,
-                  height: 52,
-                  decoration: BoxDecoration(
-                    color: card.color.withOpacity(0.12),
-                    borderRadius: BorderRadius.circular(14),
-                  ),
-                  child: Icon(
-                    card.icon,
-                    size: 28,
-                    color: card.color,
-                  ),
-                ),
-                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -199,14 +183,12 @@ class _ToolScaffold extends StatelessWidget {
 class _ToolCard {
   final String title;
   final String subtitle;
-  final IconData icon;
   final Color color;
   final Widget route;
 
   const _ToolCard({
     required this.title,
     required this.subtitle,
-    required this.icon,
     this.color = const Color(0xFF6C63FF),
     required this.route,
   });
