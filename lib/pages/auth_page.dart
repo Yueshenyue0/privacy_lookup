@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/thomeauth/thome_auth_client.dart';
-import '../services/thomeauth/announcement_dialog.dart';
 
 /// 网络验证页面
 /// 未激活/卡密过期时展示，要求用户输入卡密
@@ -101,17 +100,6 @@ class _AuthPageState extends State<AuthPage> {
       setState(() => _status = '激活失败: $e');
     } finally {
       setState(() => _loading = false);
-    }
-  }
-
-  /// 加载公告并弹窗
-  Future<void> _loadAnnouncements() async {
-    try {
-      final announcements =
-          await widget.client.getAnnouncements(kamiHash: _kamiHash);
-      await AnnouncementDialog.showViaKey(announcements);
-    } catch (_) {
-      // 公告加载失败不影响使用
     }
   }
 

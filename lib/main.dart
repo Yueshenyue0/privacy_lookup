@@ -7,7 +7,8 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'pages/home_page.dart';
 import 'pages/auth_page.dart';
 import 'services/thomeauth/thome_auth_client.dart';
-import 'services/thomeauth/announcement_dialog.dart';
+import 'services/ark_service.dart';
+import 'services/ark_announcement_dialog.dart';
 
 /// 全局导航 Key：用它弹窗 / 跳转，不依赖任何页面 context，
 /// 只要 App 起来就能在最顶层弹出公告，彻底避开"context 挂载时机"问题。
@@ -149,23 +150,27 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
     }
   }
 
-  /// 拉取公告并弹窗（验证通过后调用）
+  /// 拉取 ARK 公告并弹窗（验证通过后调用）
   Future<void> _loadAnnouncements() async {
     try {
-      final prefs = await SharedPreferences.getInstance();
-      final kamiHash = prefs.getString('kami_hash');
-      debugPrint('[ThomeAuth] 开始拉取公告, kamiHash=${kamiHash ?? "null"}');
-      final announcements = await _authClient.getAnnouncements(kamiHash: kamiHash);
-      debugPrint('[ThomeAuth] 拉取到 ${announcements.length} 条公告');
-      if (announcements.isEmpty) {
-        debugPrint('[ThomeAuth] 公告列表为空，不弹窗');
+      // 1) 检查功能开关：config.txt 为 true 才允许
+      final enabled = await ArkService.isFeatureEnabled();
+      debugPrint('[ARK] config.txt 功能开关 = $enabled');
+      if (!enabled) return;
+
+      // 2) 拉取公告 gg.txt
+      final announcement = await ArkService.fetchAnnouncement();
+      if (announcement == null) {
+        debugPrint('[ARK] gg.txt 无公告内容，不弹窗');
         return;
       }
-      // 用全局 navigatorKey 弹窗，不依赖当前 context
-      await AnnouncementDialog.showViaKey(announcements);
-      debugPrint('[ThomeAuth] 公告弹窗已触发');
+      debugPrint('[ARK] 公告标题=${announcement.title}, 图片=${announcement.imageUrl}');
+
+      // 3) 用全局 navigatorKey 弹窗
+      await ArkAnnouncementDialog.show(announcement);
+      debugPrint('[ARK] 公告弹窗已触发');
     } catch (e, st) {
-      debugPrint('[ThomeAuth] 公告拉取异常: $e\n$st');
+      debugPrint('[ARK] 公告加载异常: $e\n$st');
     }
   }
 
