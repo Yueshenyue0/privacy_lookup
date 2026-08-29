@@ -4,11 +4,11 @@ import 'package:anti_hook_vpn/anti_hook_vpn.dart';
 import 'pages/home_page.dart';
 
 void main() {
-  runApp(const PrivacyLookupApp());
+  runApp(const _AppWithGate());
 }
 
-class PrivacyLookupApp extends StatelessWidget {
-  const PrivacyLookupApp({super.key});
+class _AppWithGate extends StatelessWidget {
+  const _AppWithGate();
 
   @override
   Widget build(BuildContext context) {
@@ -51,19 +51,15 @@ class _StartupGateState extends State<StartupGate> {
 
   Future<void> _checkSecurity() async {
     try {
-      final vpn = await AntiHookVpn.isVpnConnected();
-      final proxy = await AntiHookVpn.isProxyEnabled();
-      final frida = await AntiHookVpn.isFridaDetected();
-
-      if (vpn || proxy || frida) {
+      final status = await AntiHookVpn.checkSecurity();
+      if (status.isAttacked) {
         setState(() {
           _checking = false;
           _blocked = true;
-          _message = [
-            if (vpn) '检测到 VPN 连接',
-            if (proxy) '检测到代理设置',
-            if (frida) '检测到 Frida 调试',
-          ].join('、');
+          final parts = <String>[];
+          if (status.isFridaDetected) parts.add('检测到 Frida');
+          if (status.isProxyOrVpnDetected) parts.add('检测到 VPN/代理');
+          _message = parts.join('、');
         });
         return;
       }
@@ -88,16 +84,17 @@ class _StartupGateState extends State<StartupGate> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.security_warning, size: 64, color: Colors.orange),
+                const Icon(Icons.warning_rounded, size: 64, color: Colors.orange),
                 const SizedBox(height: 16),
-                const Text(
-                  '检测到异常环境',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
-                ),
+                const Text('检测到异常环境',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
                 const SizedBox(height: 8),
-                Text(_message, style: const TextStyle(color: Colors.grey), textAlign: TextAlign.center),
+                Text(_message,
+                    style: const TextStyle(color: Colors.grey),
+                    textAlign: TextAlign.center),
                 const SizedBox(height: 24),
-                FilledButton(onPressed: () => exit(0), child: const Text('退出应用')),
+                FilledButton(
+                    onPressed: () => exit(0), child: const Text('退出应用')),
               ],
             ),
           ),
