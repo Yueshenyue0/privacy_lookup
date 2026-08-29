@@ -303,8 +303,8 @@ class ThomeAuthClient {
   /// 如果为 null 则只取"全局/登录前"公告。
   Future<List<ThomeAnnouncement>> getAnnouncements({String? kamiHash}) async {
     final s = await _ensureSession();
+    // 不传 announcement_id，取所有可见公告
     final reqData = jsonEncode({
-      'announcement_id': 0,
       'timestamp': ThomeAuthCrypto.timestampMs(),
       if (kamiHash != null && kamiHash.isNotEmpty)
         'verification': {
@@ -349,9 +349,15 @@ class ThomeAuthClient {
           debugPrint('[ThomeAuth] 公告第二层解密: $innerStr');
           final innerJson = jsonDecode(innerStr) as Map<String, dynamic>;
           final realData = innerJson['real_data'] as Map<String, dynamic>? ?? {};
-          final nestedList = realData['announcements'] as List<dynamic>? ?? [];
-          rawList = nestedList;
-          debugPrint('[ThomeAuth] 公告走 nested 路径, ${nestedList.length} 条');
+          // 服务端字段名是 announcement（单数），可能为数组或单个对象
+          final rawNested = realData['announcement'] ?? realData['announcements'];
+          if (rawNested is List) {
+            rawList = rawNested.cast<dynamic>();
+          } else if (rawNested != null) {
+            // 单个公告对象，包成列表
+            rawList = [rawNested];
+          }
+          debugPrint('[ThomeAuth] 公告走 nested 路径, ${rawList.length} 条');
         } catch (_) {
           // 嵌套解密失败则回退到外层 announce 字段
           final outerList = outer['announcements'] as List<dynamic>? ?? [];
