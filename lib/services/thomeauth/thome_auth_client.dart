@@ -374,7 +374,7 @@ class ThomeAuthClient {
   }
 
   String _randomHex(int length) {
-    final rand = _Random();
+    final rand = Random.secure();
     final buf = StringBuffer();
     for (var i = 0; i < length; i++) {
       buf.write(rand.nextInt(16).toRadixString(16));
