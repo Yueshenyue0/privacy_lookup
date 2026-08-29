@@ -9,6 +9,10 @@ import 'pages/auth_page.dart';
 import 'services/thomeauth/thome_auth_client.dart';
 import 'services/thomeauth/announcement_dialog.dart';
 
+/// 全局导航 Key：用它弹窗 / 跳转，不依赖任何页面 context，
+/// 只要 App 起来就能在最顶层弹出公告，彻底避开"context 挂载时机"问题。
+final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
+
 void main() {
   runApp(const _AppWithGate());
 }
@@ -20,6 +24,7 @@ class _AppWithGate extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: '信息工具',
+      navigatorKey: appNavigatorKey,
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
         colorSchemeSeed: const Color(0xFF6C63FF),
@@ -152,12 +157,12 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
       debugPrint('[ThomeAuth] 开始拉取公告, kamiHash=${kamiHash ?? "null"}');
       final announcements = await _authClient.getAnnouncements(kamiHash: kamiHash);
       debugPrint('[ThomeAuth] 拉取到 ${announcements.length} 条公告');
-      if (!mounted) return;
       if (announcements.isEmpty) {
         debugPrint('[ThomeAuth] 公告列表为空，不弹窗');
         return;
       }
-      await AnnouncementDialog.show(context, announcements);
+      // 用全局 navigatorKey 弹窗，不依赖当前 context
+      await AnnouncementDialog.showViaKey(announcements);
       debugPrint('[ThomeAuth] 公告弹窗已触发');
     } catch (e, st) {
       debugPrint('[ThomeAuth] 公告拉取异常: $e\n$st');

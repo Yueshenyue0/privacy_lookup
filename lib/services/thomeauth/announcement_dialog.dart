@@ -1,46 +1,34 @@
 import 'package:flutter/material.dart';
+import '../../main.dart' show appNavigatorKey;
 import 'thome_auth_client.dart';
 
-/// 公告弹窗框架
-/// 用法：AnnouncementDialog.show(context, announcements)
+/// 公告弹窗框架（使用全局导航 key，不依赖页面 context）
+/// 用法：AnnouncementDialog.showViaKey(announcements)
 class AnnouncementDialog {
   AnnouncementDialog._();
 
-  /// 显示公告列表（弹窗框架，可连续展示多条）
-  static Future<void> show(
-      BuildContext context, List<ThomeAnnouncement> announcements) async {
+  /// 用全局 navigatorKey 弹窗 —— 只要 App 起来就能弹，不依赖任何页面 context，
+  /// 彻底规避 "showDialog 时机/context 挂载" 问题。
+  static Future<void> showViaKey(List<ThomeAnnouncement> announcements) async {
     if (announcements.isEmpty) return;
+    final navState = appNavigatorKey.currentState;
+    if (navState == null) {
+      debugPrint('[Announcement] 全局 navigatorKey 未就绪，跳过弹窗');
+      return;
+    }
 
     // 按优先级排序（高优先级在前）
     final sorted = List<ThomeAnnouncement>.from(announcements)
       ..sort((a, b) => b.priority.compareTo(a.priority));
 
     for (final ann in sorted) {
-      if (!context.mounted) return;
-      // 临时禁用 _isVisible 过滤，确保公告必定弹出（debug）
-      final shouldShow = true;
-      if (!shouldShow) continue;
-
+      // barrierDismissible: 强制类型不可点外部关闭，其余可点外部关闭
       await showDialog(
-        context: context,
+        context: navState.context,
         barrierDismissible: !_isForcedType(ann.type),
         builder: (ctx) => _AnnouncementDialogContent(announcement: ann),
       );
     }
-  }
-
-  /// 判断公告当前是否在展示期内
-  static bool _isVisible(ThomeAnnouncement ann) {
-    final now = DateTime.now();
-    if (ann.startTime != null && ann.startTime!.isNotEmpty) {
-      final start = DateTime.tryParse(ann.startTime!);
-      if (start != null && now.isBefore(start)) return false;
-    }
-    if (ann.endTime != null && ann.endTime!.isNotEmpty) {
-      final end = DateTime.tryParse(ann.endTime!);
-      if (end != null && now.isAfter(end)) return false;
-    }
-    return true;
   }
 
   /// 公告类型是否为强制展示（不可点击外部关闭，必须点确认）
@@ -61,7 +49,7 @@ class _AnnouncementDialogContent extends StatelessWidget {
     final color = _colorFor(announcement.type, theme);
 
     return PopScope(
-      canPop: announcement.type != 'warning' && announcement.type != 'notice' && announcement.type != 'update',
+      canPop: !_isForced(announcement.type),
       child: AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
@@ -79,17 +67,24 @@ class _AnnouncementDialogContent extends StatelessWidget {
         content: SingleChildScrollView(
           child: Text(
             announcement.content,
-            style: TextStyle(color: theme.colorScheme.onSurface.withOpacity(0.8)),
+            style: TextStyle(
+                color: theme.colorScheme.onSurface.withOpacity(0.8)),
           ),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(context).pop(),
-            child: const Text('知道了'),
+            child: Text(announcement.actionText.isEmpty
+                ? '知道了'
+                : announcement.actionText),
           ),
         ],
       ),
     );
+  }
+
+  bool _isForced(String type) {
+    return type == 'warning' || type == 'notice' || type == 'update';
   }
 
   IconData _iconFor(String type) {

@@ -76,6 +76,7 @@ class ThomeAnnouncement {
   final bool hasConditions;
   final String? startTime;
   final String? endTime;
+  final String actionText;
 
   ThomeAnnouncement({
     required this.id,
@@ -87,6 +88,7 @@ class ThomeAnnouncement {
     required this.hasConditions,
     this.startTime,
     this.endTime,
+    this.actionText = '',
   });
 
   factory ThomeAnnouncement.fromJson(Map<String, dynamic> json) {
@@ -100,6 +102,7 @@ class ThomeAnnouncement {
       hasConditions: json['has_conditions'] as bool? ?? false,
       startTime: json['start_time'] as String?,
       endTime: json['end_time'] as String?,
+      actionText: (json['action'] ?? json['button_text'] ?? '') as String? ?? '',
     );
   }
 }
