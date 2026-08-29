@@ -67,10 +67,11 @@ class _StartupGateState extends State<StartupGate> with WidgetsBindingObserver {
   Future<void> _check() async {
     try {
       // 抓包工具特征：hook 框架(Frida/Xposed) + 调试器 + VPN
-      final hooked = await DeviceSafetyInfo.isHooked();
+      // 注意: isHooked/isDebuggerAttached/isVPNCheck 是静态属性(Future<bool>)，不带括号
+      final hooked = await DeviceSafetyInfo.isHooked;
       final frida = DeviceSafetyInfo.checkFridaByMaps(); // 原生 C 层扫 /proc/self/maps，更抗绕过
-      final debugger = await DeviceSafetyInfo.isDebuggerAttached();
-      final vpn = await DeviceSafetyInfo.isVPNCheck();
+      final debugger = await DeviceSafetyInfo.isDebuggerAttached;
+      final vpn = await DeviceSafetyInfo.isVPNCheck;
 
       if (hooked || frida || debugger || vpn) {
         setState(() {
