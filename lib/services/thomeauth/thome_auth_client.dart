@@ -346,6 +346,7 @@ class ThomeAuthClient {
         try {
           final innerStr = await ThomeAuthCrypto.chacha20DecryptHex(
               nestedEncrypted, s.transportKey);
+          debugPrint('[ThomeAuth] 公告第二层解密: $innerStr');
           final innerJson = jsonDecode(innerStr) as Map<String, dynamic>;
           final realData = innerJson['real_data'] as Map<String, dynamic>? ?? {};
           final nestedList = realData['announcements'] as List<dynamic>? ?? [];
