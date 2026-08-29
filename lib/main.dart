@@ -19,31 +19,11 @@ class PrivacyLookupApp extends StatelessWidget {
         colorSchemeSeed: const Color(0xFF6C63FF),
         useMaterial3: true,
         brightness: Brightness.light,
-        appBarTheme: const AppBarTheme(
-          centerTitle: true,
-          elevation: 0,
-        ),
-        cardTheme: CardThemeData(
-          elevation: 1,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
       ),
       darkTheme: ThemeData(
         colorSchemeSeed: const Color(0xFF6C63FF),
         useMaterial3: true,
         brightness: Brightness.dark,
-        appBarTheme: const AppBarTheme(
-          centerTitle: true,
-          elevation: 0,
-        ),
-        cardTheme: CardThemeData(
-          elevation: 1,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(16),
-          ),
-        ),
       ),
       themeMode: ThemeMode.system,
       home: const StartupGate(),
@@ -51,7 +31,6 @@ class PrivacyLookupApp extends StatelessWidget {
   }
 }
 
-/// 启动入口：检测 VPN/代理/Frida 后提示用户
 class StartupGate extends StatefulWidget {
   const StartupGate({super.key});
 
@@ -109,25 +88,16 @@ class _StartupGateState extends State<StartupGate> {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                const Icon(Icons.security_warning,
-                    size: 64, color: Colors.orange),
+                const Icon(Icons.security_warning, size: 64, color: Colors.orange),
                 const SizedBox(height: 16),
-                Text(
+                const Text(
                   '检测到异常环境',
-                  style:
-                      const TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600),
                 ),
                 const SizedBox(height: 8),
-                Text(
-                  _message,
-                  style: const TextStyle(color: Colors.grey),
-                  textAlign: TextAlign.center,
-                ),
+                Text(_message, style: const TextStyle(color: Colors.grey), textAlign: TextAlign.center),
                 const SizedBox(height: 24),
-                FilledButton(
-                  onPressed: () => exit(0),
-                  child: const Text('退出应用'),
-                ),
+                FilledButton(onPressed: () => exit(0), child: const Text('退出应用')),
               ],
             ),
           ),
