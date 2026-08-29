@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:advanced_root_detection/advanced_root_detection.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'pages/home_page.dart';
 
 void main() {
@@ -42,7 +43,9 @@ class SecurityWrapper extends StatefulWidget {
 
 class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingObserver {
   final _shield = AdvanceRootDetection();
+  final _connectivity = Connectivity();
   StreamSubscription<Threat>? _threatSub;
+  StreamSubscription<List<ConnectivityResult>>? _connSub;
   bool _initialCheckDone = false;
   bool _blocked = false;
   String _blockReason = '';
@@ -84,7 +87,16 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
 
     setState(() => _initialCheckDone = true);
 
-    // 2) 实时流监控：订阅后，检测到的威胁事件会推送过来
+    // 2) 系统级实时 VPN 监听：VPN 一开启立刻回调（秒级），不等轮询
+    _connSub = _connectivity.onConnectivityChanged.listen((results) {
+      if (results.contains(ConnectivityResult.vpn)) {
+        _block('检测到 VPN 连接（抓包环境）');
+      }
+    });
+    // 启动时也检查一次当前是否有 VPN
+    _checkConnectivityOnce();
+
+    // 3) 实时流监控：订阅后，检测到的威胁事件会推送过来
     _threatSub = _shield.threatStream.listen((threat) {
       final cat = threat.category;
       if (cat == ThreatCategory.runtimeManipulation ||
@@ -95,8 +107,17 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
       }
     });
 
-    // 3) 启动后台定期检测（原生端最小间隔 5 秒）
+    // 4) 后台定期检测（原生端最小间隔 5 秒，作为兜底）
     await _shield.startMonitoring(config);
+  }
+
+  Future<void> _checkConnectivityOnce() async {
+    try {
+      final results = await _connectivity.checkConnectivity();
+      if (results.contains(ConnectivityResult.vpn)) {
+        _block('检测到 VPN 连接（抓包环境）');
+      }
+    } catch (_) {}
   }
 
   @override
@@ -104,6 +125,7 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
     // 从后台回到前台时也立即检测
     if (state == AppLifecycleState.resumed) {
       _quickCheck();
+      _checkConnectivityOnce();
     }
   }
 
@@ -152,6 +174,7 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
   @override
   void dispose() {
     _threatSub?.cancel();
+    _connSub?.cancel();
     _shield.stopMonitoring();
     WidgetsBinding.instance.removeObserver(this);
     super.dispose();
