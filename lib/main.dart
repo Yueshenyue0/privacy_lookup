@@ -146,7 +146,9 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
   /// 拉取公告并弹窗（验证通过后调用）
   Future<void> _loadAnnouncements() async {
     try {
-      final announcements = await _authClient.getAnnouncements();
+      final prefs = await SharedPreferences.getInstance();
+      final kamiHash = prefs.getString('kami_hash');
+      final announcements = await _authClient.getAnnouncements(kamiHash: kamiHash);
       if (!mounted || announcements.isEmpty) return;
       await AnnouncementDialog.show(context, announcements);
     } catch (_) {

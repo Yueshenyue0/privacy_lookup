@@ -4,6 +4,7 @@ import 'dart:math';
 import 'dart:typed_data';
 import 'package:http/http.dart' as http;
 import 'package:cryptography/cryptography.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'config.dart';
 import 'crypto_utils.dart';
 import 'json_canonicalizer.dart';
@@ -297,11 +298,17 @@ class ThomeAuthClient {
   }
 
   /// 获取公告
-  Future<List<ThomeAnnouncement>> getAnnouncements() async {
+  /// [kamiHash] 传入当前激活的卡密哈希，用于后台"登录后公告"的条件过滤；
+  /// 如果为 null 则只取"全局/登录前"公告。
+  Future<List<ThomeAnnouncement>> getAnnouncements({String? kamiHash}) async {
     final s = await _ensureSession();
     final reqData = jsonEncode({
       'announcement_id': 0,
       'timestamp': ThomeAuthCrypto.timestampMs(),
+      if (kamiHash != null && kamiHash.isNotEmpty)
+        'verification': {
+          'activated_kami': kamiHash,
+        },
     });
     final encryptedReq = await ThomeAuthCrypto.chacha20EncryptHex(
         reqData, s.transportKey);

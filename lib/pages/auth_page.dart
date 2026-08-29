@@ -107,7 +107,8 @@ class _AuthPageState extends State<AuthPage> {
   /// 加载公告并弹窗
   Future<void> _loadAnnouncements() async {
     try {
-      final announcements = await widget.client.getAnnouncements();
+      final announcements =
+          await widget.client.getAnnouncements(kamiHash: _kamiHash);
       if (!mounted) return;
       await AnnouncementDialog.show(context, announcements);
     } catch (_) {
