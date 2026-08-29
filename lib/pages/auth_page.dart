@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../services/thomeauth/thome_auth_client.dart';
+import '../services/ark_service.dart';
+import '../services/ark_announcement_dialog.dart';
 
 /// 网络验证页面
 /// 未激活/卡密过期时展示，要求用户输入卡密
@@ -100,6 +102,21 @@ class _AuthPageState extends State<AuthPage> {
       setState(() => _status = '激活失败: $e');
     } finally {
       setState(() => _loading = false);
+    }
+  }
+
+  /// 拉取 ARK 公告并弹窗
+  Future<void> _loadAnnouncements() async {
+    try {
+      // 功能开关：config.txt 为 true 才允许
+      final enabled = await ArkService.isFeatureEnabled();
+      if (!enabled) return;
+      // 拉取 gg.txt 公告
+      final announcement = await ArkService.fetchAnnouncement();
+      if (announcement == null) return;
+      await ArkAnnouncementDialog.show(announcement);
+    } catch (_) {
+      // 公告加载失败不影响使用
     }
   }
 
