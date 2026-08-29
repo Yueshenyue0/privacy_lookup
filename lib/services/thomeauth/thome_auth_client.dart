@@ -244,11 +244,8 @@ class ThomeAuthClient {
     final resp = await _post(s, '/activate', encryptedReq, encryptedApiKey);
     final decrypted = await _decryptAndVerify(resp, s);
 
-    // 外层解密
+    // 解密外层：status 只是混淆层，真实结果在 encrypted_result 内层
     final outer = jsonDecode(decrypted) as Map<String, dynamic>;
-    if (outer['status'] != 'success') {
-      return ActivateResult(success: false, error: outer['status'] as String?);
-    }
     // 解密内层 encrypted_result
     final encryptedResult = outer['encrypted_result'] as String;
     final innerStr = await ThomeAuthCrypto.chacha20DecryptHex(
@@ -281,10 +278,8 @@ class ThomeAuthClient {
 
     final resp = await _post(s, '/use', encryptedReq, encryptedApiKey);
     final decrypted = await _decryptAndVerify(resp, s);
+    // 解密外层：status 只是混淆层，真实结果在 encrypted_result 内层
     final outer = jsonDecode(decrypted) as Map<String, dynamic>;
-    if (outer['status'] != 'success') {
-      return UseResult(valid: false, error: outer['status'] as String?);
-    }
     final encryptedResult = outer['encrypted_result'] as String;
     final innerStr = await ThomeAuthCrypto.chacha20DecryptHex(
         encryptedResult, s.transportKey);
@@ -314,14 +309,30 @@ class ThomeAuthClient {
         _apiKey!, s.transportKey);
 
     final resp = await _post(s, '/announcements', encryptedReq, encryptedApiKey);
+    // 第一层解密：data.encrypted_data → {status, data:{announcements}, encrypted_data}
     final decrypted = await _decryptAndVerify(resp, s);
     final outer = jsonDecode(decrypted) as Map<String, dynamic>;
     if (outer['status'] != 'success') {
       return [];
     }
-    final innerData = outer['data'] as Map<String, dynamic>? ?? {};
-    final list = innerData['announcements'] as List<dynamic>? ?? [];
-    return list
+
+    // 第二层解密：外层 JSON 中还有一个 encrypted_data 字段，
+    // 解密后才是真正的数据 {real_data:{announcements}, timestamp, verified}
+    List<dynamic> rawList = [];
+    final nestedEncrypted = outer['encrypted_data'] as String?;
+    if (nestedEncrypted != null && nestedEncrypted.isNotEmpty) {
+      final innerStr = await ThomeAuthCrypto.chacha20DecryptHex(
+          nestedEncrypted, s.transportKey);
+      final innerJson = jsonDecode(innerStr) as Map<String, dynamic>;
+      final realData = innerJson['real_data'] as Map<String, dynamic>? ?? {};
+      rawList = realData['announcements'] as List<dynamic>? ?? [];
+    } else {
+      // 兜底：直接取 data.announcements（某些版本可能直接返回）
+      final innerData = outer['data'] as Map<String, dynamic>? ?? {};
+      rawList = innerData['announcements'] as List<dynamic>? ?? [];
+    }
+
+    return rawList
         .map((e) => ThomeAnnouncement.fromJson(e as Map<String, dynamic>))
         .toList();
   }

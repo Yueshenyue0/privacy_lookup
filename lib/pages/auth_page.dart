@@ -118,9 +118,26 @@ class _AuthPageState extends State<AuthPage> {
   String _mapError(String error) {
     switch (error) {
       case 'kami_not_found_or_used':
-        return '卡密不存在或已被使用';
+        return '卡密不存在或已被使用，请检查卡密是否正确';
       case 'kami_expired_or_not_found':
-        return '卡密已过期或不存在';
+        return '卡密已过期或不存在，请重新激活';
+      case 'kami_banned':
+      case 'banned':
+        return '该卡密已被封禁，请联系管理员';
+      case 'kami_frozen':
+      case 'frozen':
+        return '该卡密已被冻结，请联系管理员';
+      case 'device_limit_exceeded':
+      case 'device_count_exceeded':
+        return '设备数量已超限，请解绑旧设备或联系管理员';
+      case 'device_fingerprint_mismatch':
+        return '设备指纹不匹配，无法在当前设备使用';
+      case 'invalid_kami':
+      case 'invalid_format':
+        return '卡密格式无效，请检查输入';
+      case 'session_expired':
+      case '1004':
+        return '会话已过期，请重试';
       default:
         return error;
     }
