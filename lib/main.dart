@@ -55,33 +55,48 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
   }
 
   Future<void> _initSecurity() async {
+    // 开启 VPN 检测（抓包工具多为 VPN 实现）+ 最短监控间隔
+    const config = SecurityConfig(
+      android: AndroidConfig(checkVpn: true),
+      ios: IOSConfig(),
+      monitoringInterval: Duration(seconds: 5),
+    );
+
     // 1) 首次启动立刻检测
     try {
-      final report = await _shield.performCheck(SecurityConfig(
-        android: const AndroidConfig(),
-        ios: const IOSConfig(),
-      ));
-      if (report.isRuntimeManipulated || report.isDebuggerAttached) {
-        _block('检测到 Hook 或调试器');
+      final report = await _shield.performCheck(config);
+      if (report.isRuntimeManipulated ||
+          report.isDebuggerAttached ||
+          report.isPrivilegedAccess) {
+        _block('检测到 Hook/调试器/Root');
+        return;
+      }
+      // VPN 检测（checkVpn 开启后出现在报告里）
+      final vpnThreat = report.detectedThreats
+          .where((t) => t.category == ThreatCategory.analysisEnvironment ||
+              t.description.toLowerCase().contains('vpn'))
+          .toList();
+      if (vpnThreat.isNotEmpty) {
+        _block('检测到 VPN/抓包环境');
         return;
       }
     } catch (_) {}
 
     setState(() => _initialCheckDone = true);
 
-    // 2) 启动实时流监控（事件驱动，无需轮询间隔）
-    //    threatStream 在检测到威胁时立刻推送事件
+    // 2) 实时流监控：订阅后，检测到的威胁事件会推送过来
     _threatSub = _shield.threatStream.listen((threat) {
-      if (threat.category == ThreatCategory.runtimeManipulation ||
-          threat.category == ThreatCategory.debuggerAttached) {
-        _block('检测到 ${threat.category == ThreatCategory.runtimeManipulation ? 'Hook 框架' : '调试器'}');
+      final cat = threat.category;
+      if (cat == ThreatCategory.runtimeManipulation ||
+          cat == ThreatCategory.debuggerAttached ||
+          cat == ThreatCategory.privilegedAccess ||
+          cat == ThreatCategory.analysisEnvironment) {
+        _block('检测到异常环境: ${threat.description}');
       }
     });
 
-    // 3) 启动后台定期检测（1秒间隔，确保无遗漏）
-    await _shield.startMonitoring(const SecurityConfig(
-      monitoringInterval: Duration(seconds: 1),
-    ));
+    // 3) 启动后台定期检测（原生端最小间隔 5 秒）
+    await _shield.startMonitoring(config);
   }
 
   @override
