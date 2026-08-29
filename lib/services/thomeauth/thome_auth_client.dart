@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'config.dart';
 import 'crypto_utils.dart';
 import 'json_canonicalizer.dart';
+import '../http_client.dart';
 
 /// 会话信息
 class ThomeSession {
@@ -109,7 +110,7 @@ class ThomeAnnouncement {
 
 /// ThomeAuth 网络验证客户端
 class ThomeAuthClient {
-  final http.Client _http = http.Client();
+  final http.Client _http = createPinnedClient();
   ThomeSession? _session;
   String? _apiKey;
 

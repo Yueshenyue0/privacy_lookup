@@ -1,9 +1,6 @@
 import 'dart:async';
-import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:advanced_root_detection/advanced_root_detection.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'pages/home_page.dart';
 import 'pages/auth_page.dart';
 import 'services/thomeauth/thome_auth_client.dart';
@@ -11,7 +8,7 @@ import 'services/ark_service.dart';
 import 'services/ark_announcement_dialog.dart';
 
 /// 全局导航 Key：用它弹窗 / 跳转，不依赖任何页面 context，
-/// 只要 App 起来就能在最顶层弹出公告，彻底避开"context 挂载时机"问题。
+/// 只要 App 起来就能在最顶层弹出公告。
 final GlobalKey<NavigatorState> appNavigatorKey = GlobalKey<NavigatorState>();
 
 void main() {
@@ -43,7 +40,7 @@ class _AppWithGate extends StatelessWidget {
   }
 }
 
-/// 全局安全监控包裹层，独立于页面导航，覆盖整个 App 生命周期
+/// 全局包裹层：负责 config 开关 + 网络验证 + 公告
 class SecurityWrapper extends StatefulWidget {
   const SecurityWrapper({super.key});
 
@@ -51,87 +48,36 @@ class SecurityWrapper extends StatefulWidget {
   State<SecurityWrapper> createState() => _SecurityWrapperState();
 }
 
-class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingObserver {
-  final _shield = AdvanceRootDetection();
-  final _connectivity = Connectivity();
+class _SecurityWrapperState extends State<SecurityWrapper> {
   final _authClient = ThomeAuthClient();
-  StreamSubscription<Threat>? _threatSub;
-  StreamSubscription<List<ConnectivityResult>>? _connSub;
-  bool _initialCheckDone = false;
-  bool _blocked = false;
+  bool _configLoaded = false;
+  bool _configAllowed = false;
   bool _authPassed = false;
-  bool _configAllowed = false; // config.txt = true 时功能可用
-  bool _configLoaded = false; // config 是否已成功返回
-  String _blockReason = '';
+  bool _initialCheckDone = false;
 
   @override
   void initState() {
     super.initState();
-    WidgetsBinding.instance.addObserver(this);
-    _initSecurity();
+    _init();
   }
 
-  Future<void> _initSecurity() async {
-    // 0) 先拉取 config.txt（功能开关），无限重试直到成功。
-    //    在此之前，功能不可用。
+  Future<void> _init() async {
+    // 1) 先拉 config.txt（功能开关），无限重试直到成功。返回前功能不可用。
     final configText = await ArkService.fetchConfig();
     final allowed = configText == 'true';
     setState(() {
       _configAllowed = allowed;
       _configLoaded = true;
-      _initialCheckDone = true;
     });
     debugPrint('[ARK] config.txt 功能开关 = $allowed ($configText)');
 
     if (!allowed) {
-      // 功能禁用：直接结束，build 显示禁用页
+      // 功能禁用，build 显示禁用页
+      setState(() => _initialCheckDone = true);
       return;
     }
 
-    // 功能可用 → 继续安全检测
-    // 开启 VPN 检测（抓包工具多为 VPN 实现）+ 最短监控间隔
-    // 去掉 Root/调试器/Hook 检测（易误报），只保留 VPN 反抓包
-    const config = SecurityConfig(
-      android: AndroidConfig(checkVpn: true),
-      ios: IOSConfig(),
-      monitoringInterval: Duration(seconds: 5),
-    );
-
-    // 1) 首次启动立刻检测（只检测 VPN，忽略 Hook/调试器/Root）
-    try {
-      final report = await _shield.performCheck(config);
-      // VPN 检测（checkVpn 开启后出现在报告里）
-      final vpnThreat = report.detectedThreats
-          .where((t) => t.category == ThreatCategory.analysisEnvironment ||
-              t.description.toLowerCase().contains('vpn'))
-          .toList();
-      if (vpnThreat.isNotEmpty) {
-        _block('检测到 VPN/抓包环境');
-        return;
-      }
-    } catch (_) {}
-
-    // 2) 系统级实时 VPN 监听：VPN 一开启立刻回调（秒级），不等轮询
-    _connSub = _connectivity.onConnectivityChanged.listen((results) {
-      if (results.contains(ConnectivityResult.vpn)) {
-        _block('检测到 VPN 连接（抓包环境）');
-      }
-    });
-    // 启动时也检查一次当前是否有 VPN
-    _checkConnectivityOnce();
-
-    // 3) 实时流监控：只响应 VPN/抓包环境，忽略 Hook/调试器/Root
-    _threatSub = _shield.threatStream.listen((threat) {
-      final cat = threat.category;
-      if (cat == ThreatCategory.analysisEnvironment) {
-        _block('检测到异常环境: ${threat.description}');
-      }
-    });
-
-    // 4) 后台定期检测（原生端最小间隔 5 秒，作为兜底）
-    await _shield.startMonitoring(config);
-
-    // 5) 网络验证：检查本地是否已有有效卡密
+    // 2) 网络验证
     await _verifyAuth();
   }
 
@@ -142,31 +88,38 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
       final kamiHash = prefs.getString('kami_hash');
       if (kamiHash == null || kamiHash.isEmpty) {
         // 无卡密 → 保持 _authPassed=false，build 显示 AuthPage
+        setState(() => _initialCheckDone = true);
         return;
       }
       // 有卡密 → 验证是否有效
       final result = await _authClient.use(kamiHash);
       if (result.valid) {
-        setState(() => _authPassed = true);
-        // 验证通过后尽快拉公告（去掉延时）
+        setState(() {
+          _authPassed = true;
+          _initialCheckDone = true;
+        });
+        // 验证通过后拉公告
         await _loadAnnouncements();
+      } else {
+        // 卡密失效 → 保持 _authPassed=false
+        setState(() => _initialCheckDone = true);
       }
-      // 卡密失效 → 保持 _authPassed=false，build 显示 AuthPage
     } catch (e) {
       // 网络错误时，允许进入（下次启动再验证）
-      setState(() => _authPassed = true);
+      setState(() {
+        _authPassed = true;
+        _initialCheckDone = true;
+      });
     }
   }
 
-  /// 拉取 ARK 公告并弹窗（验证通过后调用）
+  /// 拉取 ARK 公告并弹窗
   Future<void> _loadAnnouncements() async {
     try {
-      // 拉取 gg.txt 公告内容
       final raw = await ArkService.fetchAnnouncementRaw();
       final announcement = ArkService.parseAnnouncement(raw);
       if (announcement == null) return;
       debugPrint('[ARK] 公告内容=${announcement.content}, 图片=${announcement.imageUrl}');
-      // 用全局 navigatorKey 弹窗，标题写死"公告"
       await ArkAnnouncementDialog.show(announcement);
       debugPrint('[ARK] 公告弹窗已触发');
     } catch (e, st) {
@@ -178,70 +131,6 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
     if (mounted) {
       setState(() => _authPassed = true);
     }
-  }
-
-  Future<void> _checkConnectivityOnce() async {
-    try {
-      final results = await _connectivity.checkConnectivity();
-      if (results.contains(ConnectivityResult.vpn)) {
-        _block('检测到 VPN 连接（抓包环境）');
-      }
-    } catch (_) {}
-  }
-
-  @override
-  void didChangeAppLifecycleState(AppLifecycleState state) {
-    // 从后台回到前台时也立即检测（只检测 VPN，去掉 Hook/Root 误报）
-    if (state == AppLifecycleState.resumed) {
-      _checkConnectivityOnce();
-    }
-  }
-
-  Future<void> _quickCheck() async {
-    // 已移除 Hook/调试器/Root 检测（易误报），仅保留 VPN 检测
-    await _checkConnectivityOnce();
-  }
-
-  void _block(String reason) {
-    if (_blocked) return; // 防止重复弹窗
-    _blocked = true;
-    _blockReason = reason;
-
-    // 用全局对话框覆盖所有页面，不管当前在哪个功能页
-    if (mounted) {
-      showDialog(
-        context: context,
-        barrierDismissible: false,
-        builder: (ctx) => PopScope(
-          canPop: false,
-          child: AlertDialog(
-            title: const Row(
-              children: [
-                Icon(Icons.warning_rounded, color: Colors.orange),
-                SizedBox(width: 8),
-                Text('检测到异常环境'),
-              ],
-            ),
-            content: Text(_blockReason),
-            actions: [
-              FilledButton(
-                onPressed: () => exit(0),
-                child: const Text('退出应用'),
-              ),
-            ],
-          ),
-        ),
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _threatSub?.cancel();
-    _connSub?.cancel();
-    _shield.stopMonitoring();
-    WidgetsBinding.instance.removeObserver(this);
-    super.dispose();
   }
 
   @override
@@ -257,33 +146,6 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
               SizedBox(height: 16),
               Text('正在检查服务...'),
             ],
-          ),
-        ),
-      );
-    }
-    if (_blocked) {
-      // 阻断页（如果 dialog 还没弹出或已被关闭，兜底）
-      return Scaffold(
-        appBar: AppBar(title: const Text('安全检测')),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(24),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.warning_rounded, size: 64, color: Colors.orange),
-                const SizedBox(height: 16),
-                const Text('检测到异常环境',
-                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600)),
-                const SizedBox(height: 8),
-                Text(_blockReason,
-                    style: const TextStyle(color: Colors.grey),
-                    textAlign: TextAlign.center),
-                const SizedBox(height: 24),
-                FilledButton(
-                    onPressed: () => exit(0), child: const Text('退出应用')),
-              ],
-            ),
           ),
         ),
       );

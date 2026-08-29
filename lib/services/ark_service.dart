@@ -1,12 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
+import 'http_client.dart';
 
 /// ARK 后端服务：读取 config.txt（功能开关）和 gg.txt（公告）
 /// 请求失败会无限重试，直到成功。
 class ArkService {
   static const String baseUrl = 'https://arkhub.asia';
   static const Duration retryDelay = Duration(milliseconds: 2000);
+
+  /// 使用绑定证书指纹的客户端
+  static final http.Client _client = createPinnedClient();
 
   /// 检查单个请求是否成功
   static bool _isOk(http.Response resp) => resp.statusCode == 200;
@@ -17,7 +21,7 @@ class ArkService {
     while (true) {
       attempt++;
       try {
-        final resp = await http
+        final resp = await _client
             .get(Uri.parse('$baseUrl$path'))
             .timeout(const Duration(seconds: 10));
         if (_isOk(resp)) {
