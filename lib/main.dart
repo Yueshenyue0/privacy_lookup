@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:advanced_root_detection/advanced_root_detection.dart';
+import 'package:device_safety_info/device_safety_info.dart';
 import 'pages/home_page.dart';
 
 void main() {
@@ -39,7 +39,7 @@ class StartupGate extends StatefulWidget {
 }
 
 class _StartupGateState extends State<StartupGate> with WidgetsBindingObserver {
-  final _shield = AdvanceRootDetection();
+  final _info = DeviceSafetyInfo();
   bool _checking = true;
   bool _blocked = false;
   String _message = '';
@@ -54,12 +54,12 @@ class _StartupGateState extends State<StartupGate> with WidgetsBindingObserver {
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
-    _shield.stopMonitoring();
     super.dispose();
   }
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
+    // 回到前台时重新检测，保证"持续检测"
     if (state == AppLifecycleState.resumed) {
       _check();
     }
@@ -67,16 +67,20 @@ class _StartupGateState extends State<StartupGate> with WidgetsBindingObserver {
 
   Future<void> _check() async {
     try {
-      final report = await _shield.performCheck(SecurityConfig(
-        android: const AndroidConfig(),
-        ios: const IOSConfig(),
-      ));
+      // 抓包工具特征：hook 框架(Frida/Xposed) + 调试器 + VPN
+      final hooked = await _info.isHooked();
+      final debugger = await _info.isDebuggerAttached();
+      final vpn = await _info.isVPNCheck();
 
-      if (report.isRuntimeManipulated || report.isDebuggerAttached) {
+      if (hooked || debugger || vpn) {
         setState(() {
           _checking = false;
           _blocked = true;
-          _message = '检测到抓包工具或调试器';
+          _message = [
+            if (hooked) '检测到 Hook 框架 (Frida/Xposed)',
+            if (debugger) '检测到调试器',
+            if (vpn) '检测到 VPN 连接',
+          ].join('\n');
         });
         return;
       }
