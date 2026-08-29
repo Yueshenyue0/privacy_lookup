@@ -316,27 +316,39 @@ class ThomeAuthClient {
         _apiKey!, s.transportKey);
 
     final resp = await _post(s, '/announcements', encryptedReq, encryptedApiKey);
-    // 第一层解密：data.encrypted_data → {status, data:{announcements}, encrypted_data}
+    // 第一层解密：data.encrypted_data → 外层公告 JSON
     final decrypted = await _decryptAndVerify(resp, s);
     final outer = jsonDecode(decrypted) as Map<String, dynamic>;
     if (outer['status'] != 'success') {
       return [];
     }
 
-    // 第二层解密：外层 JSON 中还有一个 encrypted_data 字段，
-    // 解密后才是真正的数据 {real_data:{announcements}, timestamp, verified}
+    // 解析公告列表。文档结构存在两种可能：
+    // A) direct: {data: {announcements: [...]}}
+    // B) nested: {encrypted_data: "..."} 需要再解密得到 {real_data:{announcements}}
     List<dynamic> rawList = [];
-    final nestedEncrypted = outer['encrypted_data'] as String?;
-    if (nestedEncrypted != null && nestedEncrypted.isNotEmpty) {
-      final innerStr = await ThomeAuthCrypto.chacha20DecryptHex(
-          nestedEncrypted, s.transportKey);
-      final innerJson = jsonDecode(innerStr) as Map<String, dynamic>;
-      final realData = innerJson['real_data'] as Map<String, dynamic>? ?? {};
-      rawList = realData['announcements'] as List<dynamic>? ?? [];
+    // 尝试直接路径
+    final directData = outer['data'] as Map<String, dynamic>? ?? {};
+    final directList = directData['announcements'] as List<dynamic>? ?? [];
+    if (directList.isNotEmpty) {
+      rawList = directList;
     } else {
-      // 兜底：直接取 data.announcements（某些版本可能直接返回）
-      final innerData = outer['data'] as Map<String, dynamic>? ?? {};
-      rawList = innerData['announcements'] as List<dynamic>? ?? [];
+      // 尝试嵌套路径（再解密 encrypted_data）
+      final nestedEncrypted = outer['encrypted_data'] as String?;
+      if (nestedEncrypted != null && nestedEncrypted.isNotEmpty) {
+        try {
+          final innerStr = await ThomeAuthCrypto.chacha20DecryptHex(
+              nestedEncrypted, s.transportKey);
+          final innerJson = jsonDecode(innerStr) as Map<String, dynamic>;
+          final realData = innerJson['real_data'] as Map<String, dynamic>? ?? {};
+          final nestedList = realData['announcements'] as List<dynamic>? ?? [];
+          rawList = nestedList;
+        } catch (_) {
+          // 嵌套解密失败则回退到外层 announce 字段
+          final outerList = outer['announcements'] as List<dynamic>? ?? [];
+          rawList = outerList;
+        }
+      }
     }
 
     return rawList
