@@ -109,8 +109,7 @@ class _AuthPageState extends State<AuthPage> {
     try {
       final announcements =
           await widget.client.getAnnouncements(kamiHash: _kamiHash);
-      if (!mounted) return;
-      await AnnouncementDialog.show(context, announcements);
+      await AnnouncementDialog.showViaKey(announcements);
     } catch (_) {
       // 公告加载失败不影响使用
     }
