@@ -13,7 +13,7 @@ class ArkService {
   static http.Client? _clientCache;
 
   static Future<http.Client> _getClient() async {
-    _clientCache ??= await createPinnedClient();
+    _clientCache ??= await getPinnedClient();
     return _clientCache!;
   }
 

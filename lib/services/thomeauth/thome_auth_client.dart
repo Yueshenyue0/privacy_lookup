@@ -114,9 +114,9 @@ class ThomeAuthClient {
   ThomeSession? _session;
   String? _apiKey;
 
-  /// 懒加载的绑定证书指纹客户端
+  /// 懒加载的 HTTP 客户端
   Future<http.Client> _getHttp() async {
-    return _httpCache ??= await createPinnedClient();
+    return _httpCache ??= await getPinnedClient();
   }
 
   ThomeSession? get session => _session;
