@@ -22,7 +22,7 @@ class AnnouncementDialog {
 
       await showDialog(
         context: context,
-        barrierDismissible: ann.type == 'info',
+        barrierDismissible: !_isForcedType(ann.type),
         builder: (ctx) => _AnnouncementDialogContent(announcement: ann),
       );
     }
@@ -41,6 +41,11 @@ class AnnouncementDialog {
     }
     return true;
   }
+
+  /// 公告类型是否为强制展示（不可点击外部关闭，必须点确认）
+  static bool _isForcedType(String type) {
+    return type == 'warning' || type == 'notice' || type == 'update';
+  }
 }
 
 class _AnnouncementDialogContent extends StatelessWidget {
@@ -55,7 +60,7 @@ class _AnnouncementDialogContent extends StatelessWidget {
     final color = _colorFor(announcement.type, theme);
 
     return PopScope(
-      canPop: announcement.type != 'warning', // warning 不可点击外部关闭
+      canPop: announcement.type != 'warning' && announcement.type != 'notice' && announcement.type != 'update',
       child: AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         title: Row(
@@ -89,11 +94,14 @@ class _AnnouncementDialogContent extends StatelessWidget {
   IconData _iconFor(String type) {
     switch (type) {
       case 'warning':
+      case 'notice':
         return Icons.warning_amber_rounded;
       case 'error':
         return Icons.error_rounded;
       case 'success':
         return Icons.check_circle_rounded;
+      case 'update':
+        return Icons.system_update_alt_rounded;
       default:
         return Icons.campaign_rounded;
     }
@@ -102,11 +110,14 @@ class _AnnouncementDialogContent extends StatelessWidget {
   Color _colorFor(String type, ThemeData theme) {
     switch (type) {
       case 'warning':
+      case 'notice':
         return Colors.orange;
       case 'error':
         return theme.colorScheme.error;
       case 'success':
         return Colors.green;
+      case 'update':
+        return Colors.blue;
       default:
         return theme.colorScheme.primary;
     }

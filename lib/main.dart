@@ -7,6 +7,7 @@ import 'package:connectivity_plus/connectivity_plus.dart';
 import 'pages/home_page.dart';
 import 'pages/auth_page.dart';
 import 'services/thomeauth/thome_auth_client.dart';
+import 'services/thomeauth/announcement_dialog.dart';
 
 void main() {
   runApp(const _AppWithGate());
@@ -132,11 +133,24 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
       final result = await _authClient.use(kamiHash);
       if (result.valid) {
         setState(() => _authPassed = true);
+        // 验证通过后拉取公告并弹窗
+        await _loadAnnouncements();
       }
       // 卡密失效 → 保持 _authPassed=false，build 显示 AuthPage
     } catch (e) {
       // 网络错误时，允许进入（下次启动再验证）
       setState(() => _authPassed = true);
+    }
+  }
+
+  /// 拉取公告并弹窗（验证通过后调用）
+  Future<void> _loadAnnouncements() async {
+    try {
+      final announcements = await _authClient.getAnnouncements();
+      if (!mounted || announcements.isEmpty) return;
+      await AnnouncementDialog.show(context, announcements);
+    } catch (_) {
+      // 公告加载失败不影响使用
     }
   }
 
