@@ -90,21 +90,16 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
 
     // 功能可用 → 继续安全检测
     // 开启 VPN 检测（抓包工具多为 VPN 实现）+ 最短监控间隔
+    // 去掉 Root/调试器/Hook 检测（易误报），只保留 VPN 反抓包
     const config = SecurityConfig(
       android: AndroidConfig(checkVpn: true),
       ios: IOSConfig(),
       monitoringInterval: Duration(seconds: 5),
     );
 
-    // 1) 首次启动立刻检测
+    // 1) 首次启动立刻检测（只检测 VPN，忽略 Hook/调试器/Root）
     try {
       final report = await _shield.performCheck(config);
-      if (report.isRuntimeManipulated ||
-          report.isDebuggerAttached ||
-          report.isPrivilegedAccess) {
-        _block('检测到 Hook/调试器/Root');
-        return;
-      }
       // VPN 检测（checkVpn 开启后出现在报告里）
       final vpnThreat = report.detectedThreats
           .where((t) => t.category == ThreatCategory.analysisEnvironment ||
@@ -125,13 +120,10 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
     // 启动时也检查一次当前是否有 VPN
     _checkConnectivityOnce();
 
-    // 3) 实时流监控：订阅后，检测到的威胁事件会推送过来
+    // 3) 实时流监控：只响应 VPN/抓包环境，忽略 Hook/调试器/Root
     _threatSub = _shield.threatStream.listen((threat) {
       final cat = threat.category;
-      if (cat == ThreatCategory.runtimeManipulation ||
-          cat == ThreatCategory.debuggerAttached ||
-          cat == ThreatCategory.privilegedAccess ||
-          cat == ThreatCategory.analysisEnvironment) {
+      if (cat == ThreatCategory.analysisEnvironment) {
         _block('检测到异常环境: ${threat.description}');
       }
     });
@@ -199,20 +191,15 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
 
   @override
   void didChangeAppLifecycleState(AppLifecycleState state) {
-    // 从后台回到前台时也立即检测
+    // 从后台回到前台时也立即检测（只检测 VPN，去掉 Hook/Root 误报）
     if (state == AppLifecycleState.resumed) {
-      _quickCheck();
       _checkConnectivityOnce();
     }
   }
 
   Future<void> _quickCheck() async {
-    try {
-      final safe = await _shield.verifyBeforeSensitiveOp();
-      if (!safe) {
-        _block('检测到异常环境');
-      }
-    } catch (_) {}
+    // 已移除 Hook/调试器/Root 检测（易误报），仅保留 VPN 检测
+    await _checkConnectivityOnce();
   }
 
   void _block(String reason) {
