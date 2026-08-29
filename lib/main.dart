@@ -1,6 +1,6 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:anti_hook_vpn/anti_hook_vpn.dart';
+import 'package:advanced_root_detection/advanced_root_detection.dart';
 import 'pages/home_page.dart';
 
 void main() {
@@ -38,7 +38,8 @@ class StartupGate extends StatefulWidget {
   State<StartupGate> createState() => _StartupGateState();
 }
 
-class _StartupGateState extends State<StartupGate> {
+class _StartupGateState extends State<StartupGate> with WidgetsBindingObserver {
+  final _shield = AdvanceRootDetection();
   bool _checking = true;
   bool _blocked = false;
   String _message = '';
@@ -46,26 +47,44 @@ class _StartupGateState extends State<StartupGate> {
   @override
   void initState() {
     super.initState();
-    _checkSecurity();
+    WidgetsBinding.instance.addObserver(this);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _check());
   }
 
-  Future<void> _checkSecurity() async {
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _shield.stopMonitoring();
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _check();
+    }
+  }
+
+  Future<void> _check() async {
     try {
-      final status = await AntiHookVpn.checkSecurity();
-      if (status.isAttacked) {
+      final report = await _shield.performCheck(SecurityConfig(
+        android: const AndroidConfig(),
+        ios: const IOSConfig(),
+      ));
+
+      if (report.isRuntimeManipulated || report.isDebuggerAttached) {
         setState(() {
           _checking = false;
           _blocked = true;
-          final parts = <String>[];
-          if (status.isFridaDetected) parts.add('检测到 Frida');
-          if (status.isProxyOrVpnDetected) parts.add('检测到 VPN/代理');
-          _message = parts.join('、');
+          _message = '检测到抓包工具或调试器';
         });
         return;
       }
     } catch (_) {}
 
-    setState(() => _checking = false);
+    if (mounted) {
+      setState(() => _checking = false);
+    }
   }
 
   @override
