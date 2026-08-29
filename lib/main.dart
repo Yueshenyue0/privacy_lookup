@@ -133,7 +133,8 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
       final result = await _authClient.use(kamiHash);
       if (result.valid) {
         setState(() => _authPassed = true);
-        // 验证通过后拉取公告并弹窗
+        // 等 UI 完成 build 后再拉公告并弹窗
+        await Future.delayed(const Duration(milliseconds: 600));
         await _loadAnnouncements();
       }
       // 卡密失效 → 保持 _authPassed=false，build 显示 AuthPage
@@ -148,11 +149,18 @@ class _SecurityWrapperState extends State<SecurityWrapper> with WidgetsBindingOb
     try {
       final prefs = await SharedPreferences.getInstance();
       final kamiHash = prefs.getString('kami_hash');
+      debugPrint('[ThomeAuth] 开始拉取公告, kamiHash=${kamiHash ?? "null"}');
       final announcements = await _authClient.getAnnouncements(kamiHash: kamiHash);
-      if (!mounted || announcements.isEmpty) return;
+      debugPrint('[ThomeAuth] 拉取到 ${announcements.length} 条公告');
+      if (!mounted) return;
+      if (announcements.isEmpty) {
+        debugPrint('[ThomeAuth] 公告列表为空，不弹窗');
+        return;
+      }
       await AnnouncementDialog.show(context, announcements);
-    } catch (_) {
-      // 公告加载失败不影响使用
+      debugPrint('[ThomeAuth] 公告弹窗已触发');
+    } catch (e, st) {
+      debugPrint('[ThomeAuth] 公告拉取异常: $e\n$st');
     }
   }
 

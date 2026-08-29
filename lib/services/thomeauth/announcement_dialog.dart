@@ -17,7 +17,8 @@ class AnnouncementDialog {
 
     for (final ann in sorted) {
       if (!context.mounted) return;
-      final shouldShow = _isVisible(ann);
+      // 临时禁用 _isVisible 过滤，确保公告必定弹出（debug）
+      final shouldShow = true;
       if (!shouldShow) continue;
 
       await showDialog(

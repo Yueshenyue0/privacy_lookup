@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:math';
 import 'dart:typed_data';
+import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import 'package:cryptography/cryptography.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -311,16 +312,22 @@ class ThomeAuthClient {
           'activated_kami': kamiHash,
         },
     });
+    debugPrint('[ThomeAuth] 公告请求体: $reqData');
+    debugPrint('[ThomeAuth] 公告 transport_key: ${s.transportKey}');
     final encryptedReq = await ThomeAuthCrypto.chacha20EncryptHex(
         reqData, s.transportKey);
     final encryptedApiKey = await ThomeAuthCrypto.chacha20EncryptHex(
         _apiKey!, s.transportKey);
 
     final resp = await _post(s, '/announcements', encryptedReq, encryptedApiKey);
+    debugPrint('[ThomeAuth] 公告响应 status=${resp.statusCode}');
+    debugPrint('[ThomeAuth] 公告响应 body=${utf8.decode(resp.bodyBytes)}');
     // 第一层解密：data.encrypted_data → 外层公告 JSON
     final decrypted = await _decryptAndVerify(resp, s);
+    debugPrint('[ThomeAuth] 公告第一层解密: $decrypted');
     final outer = jsonDecode(decrypted) as Map<String, dynamic>;
     if (outer['status'] != 'success') {
+      debugPrint('[ThomeAuth] 公告 status=${outer['status']} 非 success，返回空');
       return [];
     }
 
@@ -332,35 +339,47 @@ class ThomeAuthClient {
     final directData = outer['data'] as Map<String, dynamic>? ?? {};
     final directList = directData['announcements'] as List<dynamic>? ?? [];
     if (directList.isNotEmpty) {
+      debugPrint('[ThomeAuth] 公告走 direct 路径, ${directList.length} 条');
       rawList = directList;
     } else {
       // 尝试嵌套路径（再解密 encrypted_data）
       final nestedEncrypted = outer['encrypted_data'] as String?;
       if (nestedEncrypted != null && nestedEncrypted.isNotEmpty) {
+        debugPrint('[ThomeAuth] 公告 direct 为空, 走 nested 路径');
         try {
           final innerStr = await ThomeAuthCrypto.chacha20DecryptHex(
               nestedEncrypted, s.transportKey);
+          debugPrint('[ThomeAuth] 公告第二层解密: $innerStr');
           final innerJson = jsonDecode(innerStr) as Map<String, dynamic>;
           final realData = innerJson['real_data'] as Map<String, dynamic>? ?? {};
           // 服务端字段名是 announcement（单数），可能为数组或单个对象
           final rawNested = realData['announcement'] ?? realData['announcements'];
           if (rawNested is List) {
+            debugPrint('[ThomeAuth] 公告 nested 取到 List, ${rawNested.length} 条');
             rawList = rawNested.cast<dynamic>();
           } else if (rawNested != null) {
+            debugPrint('[ThomeAuth] 公告 nested 取到单个对象');
             // 单个公告对象，包成列表
             rawList = [rawNested];
+          } else {
+            debugPrint('[ThomeAuth] 公告 nested real_data 无 announcement 字段');
           }
-        } catch (_) {
+        } catch (e) {
+          debugPrint('[ThomeAuth] 公告 nested 解密失败: $e');
           // 嵌套解密失败则回退到外层 announce 字段
           final outerList = outer['announcements'] as List<dynamic>? ?? [];
           rawList = outerList;
         }
+      } else {
+        debugPrint('[ThomeAuth] 公告无 nested 数据且 direct 为空');
       }
     }
 
-    return rawList
+    final result = rawList
         .map((e) => ThomeAnnouncement.fromJson(e as Map<String, dynamic>))
         .toList();
+    debugPrint('[ThomeAuth] 公告最终解析出 ${result.length} 条: $result');
+    return result;
   }
 
   // ─── 私有工具 ──────────────────────────────────────────────────────────────
