@@ -151,13 +151,13 @@ class ThomeAuthClient {
       throw Exception('会话建立失败: ${respJson['code']} - ${respJson['data']}');
     }
 
-    // 5. 验证外层 Ed25519 签名
+    // 5. 验证外层 Ed25519 签名（对移除signature后的完整响应体规范化）
     final signatureHex = respJson['signature'] as String;
     final dataJson = respJson['data'] as Map<String, dynamic>;
-    final canonical = canonicalizeJson({
-      'code': respJson['code'],
-      'data': dataJson,
-    });
+    // 关键：服务器对整个响应体（排除 signature）规范化后签名，
+    // 不是只对 {code, data}。这里取完整响应的副本，仅移除 signature。
+    final signPayload = Map<String, dynamic>.from(respJson)..remove('signature');
+    final canonical = canonicalizeJson(signPayload);
     final pub = ThomeAuthCrypto.ed25519PublicFromHex(
         ThomeAuthConfig.ed25519PublicKey);
     final sigOk = await ThomeAuthCrypto.ed25519Verify(
@@ -355,13 +355,13 @@ class ThomeAuthClient {
     if (respJson['code'] != 0) {
       throw Exception('请求失败: ${respJson['code']}');
     }
-    // 验签
+    // 验签：对整个响应体（排除 signature 字段）规范化后验证，
+    // 注意 session 建立时已单独处理，这里统一按文档规范。
     final signatureHex = respJson['signature'] as String;
     final dataJson = respJson['data'] as Map<String, dynamic>;
-    final canonical = canonicalizeJson({
-      'code': respJson['code'],
-      'data': dataJson,
-    });
+    final signPayload = Map<String, dynamic>.from(respJson)
+      ..remove('signature');
+    final canonical = canonicalizeJson(signPayload);
     final sigOk = await ThomeAuthCrypto.ed25519Verify(
         utf8.encode(canonical),
         ThomeAuthCrypto.hexDecode(signatureHex),
