@@ -57,7 +57,8 @@ class PrivacyService {
 
   static Future<PrivacyResult> lookup(String value) async {
     final uri = Uri.parse('$apiBase?value=${Uri.encodeQueryComponent(value)}');
-    final response = await getDirectClient().get(uri).timeout(const Duration(seconds: 15));
+    final response = await (await getPinnedClient()).get(uri)
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
       throw Exception('HTTP ${response.statusCode}');

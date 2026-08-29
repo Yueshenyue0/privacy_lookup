@@ -35,7 +35,8 @@ class VerifyService {
   static Future<VerifyResult> verify(String name, String idcard) async {
     final uri = Uri.parse(
         '$apiBase?name=${Uri.encodeQueryComponent(name)}&idcard=${Uri.encodeQueryComponent(idcard)}&key=$apiKey');
-    final response = await getDirectClient().get(uri).timeout(const Duration(seconds: 15));
+    final response = await (await getPinnedClient()).get(uri)
+        .timeout(const Duration(seconds: 15));
 
     if (response.statusCode != 200) {
       throw Exception('HTTP ${response.statusCode}');

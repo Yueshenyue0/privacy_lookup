@@ -11,7 +11,8 @@ class DzzzService {
     final uri = Uri.parse(
       '$apiBase?token=$token&xydm=${Uri.encodeQueryComponent(creditCode)}',
     );
-    final response = await getDirectClient().get(uri).timeout(const Duration(seconds: 15));
+    final response = await (await getPinnedClient()).get(uri)
+        .timeout(const Duration(seconds: 15));
     if (response.statusCode != 200) {
       throw Exception('HTTP ${response.statusCode}');
     }

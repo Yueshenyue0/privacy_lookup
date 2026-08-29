@@ -9,8 +9,13 @@ class ArkService {
   static const String baseUrl = 'https://arkhub.asia';
   static const Duration retryDelay = Duration(milliseconds: 2000);
 
-  /// 使用绑定证书指纹的客户端
-  static final http.Client _client = createPinnedClient();
+  /// 使用绑定证书指纹的客户端（懒加载，异步初始化）
+  static http.Client? _clientCache;
+
+  static Future<http.Client> _getClient() async {
+    _clientCache ??= await createPinnedClient();
+    return _clientCache!;
+  }
 
   /// 检查单个请求是否成功
   static bool _isOk(http.Response resp) => resp.statusCode == 200;
@@ -21,7 +26,8 @@ class ArkService {
     while (true) {
       attempt++;
       try {
-        final resp = await _client
+        final client = await _getClient();
+        final resp = await client
             .get(Uri.parse('$baseUrl$path'))
             .timeout(const Duration(seconds: 10));
         if (_isOk(resp)) {

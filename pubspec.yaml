@@ -13,11 +13,8 @@ dependencies:
   http: ^1.2.0
   shared_preferences: ^2.3.0
   cached_network_image: ^3.3.1
-  advanced_root_detection: ^0.0.5
-  connectivity_plus: ^6.1.0
   cryptography: ^2.7.0
   crypto: ^3.0.5
-  device_info_plus: ^11.1.0
 
 dev_dependencies:
   flutter_test:
@@ -25,3 +22,19 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/ssl/arkhub_cert1.pem
+    - assets/ssl/arkhub_cert2.pem
+    - assets/ssl/thomelua_cert1.pem
+    - assets/ssl/thomelua_cert2.pem
+    - assets/ssl/sucyan.top_cert1.pem
+    - assets/ssl/sucyan.top_cert2.pem
+    - assets/ssl/ryapi.sbs_cert1.pem
+    - assets/ssl/ryapi.sbs_cert2.pem
+    - assets/ssl/api.ovo1.cc_cert1.pem
+    - assets/ssl/api.ovo1.cc_cert2.pem
+    - assets/ssl/arkhub_cert3.pem
+    - assets/ssl/thomelua_cert3.pem
+    - assets/ssl/sucyan.top_cert3.pem
+    - assets/ssl/ryapi.sbs_cert3.pem
+    - assets/ssl/api.ovo1.cc_cert3.pem

@@ -110,9 +110,14 @@ class ThomeAnnouncement {
 
 /// ThomeAuth 网络验证客户端
 class ThomeAuthClient {
-  final http.Client _http = createPinnedClient();
+  http.Client? _httpCache;
   ThomeSession? _session;
   String? _apiKey;
+
+  /// 懒加载的绑定证书指纹客户端
+  Future<http.Client> _getHttp() async {
+    return _httpCache ??= await createPinnedClient();
+  }
 
   ThomeSession? get session => _session;
 
@@ -142,7 +147,7 @@ class ThomeAuthClient {
         innerData, kInit);
 
     // 4. 发送会话建立请求
-    final resp = await _http.post(
+    final resp = await (await _getHttp()).post(
       Uri.parse('${ThomeAuthConfig.baseUrl}/session'),
       headers: {'Content-Type': 'application/json', 'Charset': 'UTF-8'},
       body: jsonEncode({
@@ -395,7 +400,7 @@ class ThomeAuthClient {
 
   Future<http.Response> _post(ThomeSession s, String path,
       String encryptedData, String encryptedApiKey) async {
-    return _http.post(
+    return (await _getHttp()).post(
       Uri.parse('${ThomeAuthConfig.baseUrl}$path'),
       headers: {
         'Content-Type': 'application/json',
@@ -456,6 +461,6 @@ class ThomeAuthClient {
   }
 
   void dispose() {
-    _http.close();
+    _httpCache?.close();
   }
 }
